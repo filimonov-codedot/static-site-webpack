@@ -4,6 +4,8 @@ const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const CopyPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
+const TerserPlugin = require("terser-webpack-plugin");
 
 function generateHtmlPlugins(templateDir) {
   const templateFiles = fs.readdirSync(path.resolve(__dirname, templateDir));
@@ -24,9 +26,29 @@ const htmlPlugins = generateHtmlPlugins("./src/html/views");
 const config = {
   entry: ["./src/js/index.js", "./src/scss/styles.scss"],
   output: {
+    path: path.resolve(__dirname, "build"),
     filename: "./js/main.min.js",
   },
+  // devtool: "source-map",
   mode: "production",
+  optimization: {
+    minimize: true,
+    minimizer: [
+      new CssMinimizerPlugin({
+        minimizerOptions: {
+          preset: [
+            "default",
+            {
+              discardComments: { removeAll: true },
+            },
+          ],
+        },
+      }),
+      new TerserPlugin({
+        extractComments: true,
+      }),
+    ],
+  },
   module: {
     rules: [
       {
@@ -42,26 +64,6 @@ const config = {
             options: {
               sourceMap: true,
               url: false,
-            },
-          },
-          {
-            loader: "postcss-loader",
-            options: {
-              sourceMap: true,
-              postcssOptions: {
-                plugins: () => [
-                  require("cssnano")({
-                    preset: [
-                      "default",
-                      {
-                        discardComments: {
-                          removeAll: true,
-                        },
-                      },
-                    ],
-                  }),
-                ],
-              },
             },
           },
           {
@@ -107,8 +109,6 @@ const config = {
 };
 
 module.exports = (env, argv) => {
-  if (argv.mode === "production") {
-    config.plugins.push(new CleanWebpackPlugin());
-  }
+  if (argv.mode === "production") config.plugins.push(new CleanWebpackPlugin());
   return config;
 };
